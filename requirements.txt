@@ -1,0 +1,9 @@
+streamlit
+pandas
+numpy
+plotly
+pydeck
+pandasai
+groq
+streamlit-option-menu
+streamlit-calendar
