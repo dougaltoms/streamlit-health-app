@@ -1,7 +1,6 @@
 from snowflake.snowpark import Session
 import streamlit as st
 import pandas as pd
-import altair as alt
 import numpy as np
 
 @st.cache_resource(ttl=1)
