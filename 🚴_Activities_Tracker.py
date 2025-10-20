@@ -82,7 +82,7 @@ def load_data(file_path):
 
         # Infer Activity Type from Name for filtering (more granular with expanded keywords)
         df['Activity Type'] = 'Other'
-        df.loc[df['Name'].str.contains('run|jog|treadmill', case=False, na=False), 'Activity Type'] = 'Run'
+        df.loc[df['Name'].str.contains('run', case=False, na=False), 'Activity Type'] = 'Run'
         df.loc[df['Name'].str.contains('ride|bike|cycling|peloton', case=False, na=False), 'Activity Type'] = 'Ride'
         df.loc[df['Name'].str.contains('swim', case=False, na=False), 'Activity Type'] = 'Swim'
         df.loc[df['Name'].str.contains('hike', case=False, na=False), 'Activity Type'] = 'Hike'
@@ -108,6 +108,7 @@ df_strava = load_data('strava_activities.csv')
 
 if df_strava is not None:
     st.title(f"Personal Activity Dashboard")
+    st.link_button("Go to Profile", st.secrets['strava_user'])
 
     # --- Main Page Filters in an Expander ---
     with st.expander("Filter Your Activities", expanded=True):
@@ -120,7 +121,7 @@ if df_strava is not None:
             months_in_year = sorted(df_strava[df_strava['Year'] == selected_year]['Month'].unique())
             
             month_options = ["All"] + [month_map[m] for m in months_in_year]
-            selected_month_name = st.pills("Select Month", options=month_options)
+            selected_month_name = st.pills("Select Month", options=month_options, default='All')
 
             if selected_month_name == "All":
                 selected_months = months_in_year
@@ -131,7 +132,7 @@ if df_strava is not None:
         with filter_col2:
             activity_types = sorted(df_strava['Activity Type'].unique())
             activity_options = ["All"] + activity_types
-            selected_activity = st.pills("Select Activity Type", options=activity_options)
+            selected_activity = st.pills("Select Activity Type", options=activity_options, default='All')
         
         with filter_col3:
             min_dist, max_dist = 0.0, df_strava['Distance_km'].max()
@@ -202,26 +203,8 @@ if df_strava is not None:
             # Get the most recent activity from the filtered dataframe
             last_activity = current_period_df.sort_values(by='Start Date Local', ascending=False).iloc[0]
             
-            st.subheader("Last Activity Summary")
-            moving_time_formatted = str(timedelta(seconds=int(last_activity['Moving_Time_sec'])))
-
-            st.markdown(f"""
-            <div class="summary-box">
-                <p>
-                    <span class="activity-title">{last_activity['Name']}</span> 
-                    <span class="activity-date">({last_activity['Start Date Local'].strftime('%A, %d %b %Y')})</span>
-                </p>
-                <div class="activity-stats">
-                    <span><strong>Distance:</strong> {last_activity['Distance_km']:.2f} km</span>
-                    <span><strong>Time:</strong> {moving_time_formatted}</span>
-                    <span><strong>Elevation:</strong> {last_activity['Elevation_Gain_m']:.0f} m</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("---")
-
             col_perf1, col_perf2 = st.columns(2)
+            
             with col_perf1:
                 st.subheader("Weekly Activity Counts")
                 weekly_counts = current_period_df.set_index('Start Date Local') \
@@ -245,6 +228,10 @@ if df_strava is not None:
                 else:
                     st.info("Not enough heart rate data to display this chart.")
 
+            # Always have the raw data expander available
+        with st.expander("Show Raw Filtered Data"):
+            st.dataframe(current_period_df)
+
     if selected_tab == "Geospatial Analysis":
         st.subheader("Activity Hotspots (All Time)")
         
@@ -255,7 +242,7 @@ if df_strava is not None:
             view_state = pdk.ViewState(
                 latitude=map_data['start_lat'].mean(), 
                 longitude=map_data['start_lon'].mean(), 
-                zoom=10, 
+                zoom=5, 
                 pitch=45
             )
             
@@ -304,7 +291,4 @@ if df_strava is not None:
         if cal and 'event' in cal:
             st.markdown("---")
             st.write(f"**Selected Activity:** {cal['event']['title']}")
-            
-    # Always have the raw data expander available
-    with st.expander("Show Raw Filtered Data"):
-        st.dataframe(current_period_df)
+        
