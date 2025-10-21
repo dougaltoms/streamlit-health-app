@@ -119,7 +119,7 @@ with st.expander('🤖 Chat to your data'):
     # Initialize chat history in session state
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "How can I help you analyze your fitness activities today?"}
+            {"role": "assistant", "content": "What do you want to know about your customers?"}
         ]
 
     # --- Core Chatbot Functions ---
