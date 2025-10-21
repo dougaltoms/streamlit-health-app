@@ -198,7 +198,7 @@ if df_strava is not None:
             kpi_col3.metric("Total Elevation Gain", f"{total_elevation:,.0f} m", f"{elevation_delta:.1f}%")
             kpi_col4.metric("Total Moving Time", f"{total_moving_time_hr:,.1f} hrs", f"{time_delta:.1f}%")
             
-            st.markdown("<hr style='border: 0.5px solid red;'>", unsafe_allow_html=True)
+            st.markdown("<hr style='border: 0.5px solid #0169ca;'>", unsafe_allow_html=True)
             
             # Get the most recent activity from the filtered dataframe
             last_activity = current_period_df.sort_values(by='Start Date Local', ascending=False).iloc[0]
@@ -289,6 +289,6 @@ if df_strava is not None:
         cal = calendar(events=calendar_events, options={"headerToolbar": { "left": "prev,next today", "center": "title", "right": "dayGridMonth,timeGridWeek,timeGridDay"}, "initialView": "dayGridMonth"})
         
         if cal and 'event' in cal:
-            st.markdown("<hr style='border: 0.5px solid red;'>", unsafe_allow_html=True)
+            st.markdown("<hr style='border: 0.5px solid #0169ca;'>", unsafe_allow_html=True)
             st.write(f"**Selected Activity:** {cal['event']['title']}")
         
