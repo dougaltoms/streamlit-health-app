@@ -268,7 +268,7 @@ with st.expander('🤖 Chat to your data'):
 if filtered_df.empty:
     st.warning("No data matches the selected filters.")
 else:
-    st.markdown("<hr style='border: 0.5px solid red;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: 0.5px solid #0169ca;'>", unsafe_allow_html=True)
     # Top-level metrics based on filtered data
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Activities", f"{filtered_df.shape[0]:,}")
@@ -276,7 +276,7 @@ else:
     col3.metric("Total Elevation Gain", f"{filtered_df['TOTAL_ELEVATION_GAIN_M'].sum():,.0f} m")
     col4.metric("Total Kudos", f"{filtered_df['KUDOS'].sum():,}")
 
-    st.markdown("<hr style='border: 0.5px solid red;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: 0.5px solid #0169ca;'>", unsafe_allow_html=True)
 
     # Dashboard Charts
     col1, col2 = st.columns([2, 1])
@@ -297,13 +297,13 @@ else:
 
         st.subheader("Distance vs Elevation Gain")
         st.write("How activity distance relates to elevation.")
-        st.scatter_chart(filtered_df, x='DISTANCE_KM', y='TOTAL_ELEVATION_GAIN_M', color='#FF4B4B')
+        st.scatter_chart(filtered_df, x='DISTANCE_KM', y='TOTAL_ELEVATION_GAIN_M', color='#0169ca')
 
     with col2:
         st.subheader("Activity Types")
         activity_dist = filtered_df['ACTIVITY_TYPE'].value_counts()
-        st.bar_chart(activity_dist, color='#FF4B4B')
+        st.bar_chart(activity_dist, color='#0169ca')
         
         st.subheader("Activities by Country")
         country_dist = filtered_df['COUNTRY'].value_counts().head(10)
-        st.bar_chart(country_dist, color='#FF4B4B')
+        st.bar_chart(country_dist, color='#0169ca')
