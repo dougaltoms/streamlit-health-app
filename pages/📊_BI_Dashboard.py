@@ -114,7 +114,7 @@ filtered_df = df[
 
 # --- BI Dashboard Section ---
 with st.expander('🤖 Chat to your data'):
-    st.header("🤖 Ask me anything")
+    st.header("Ask me anything")
 
     # Initialize chat history in session state
     if "messages" not in st.session_state:
