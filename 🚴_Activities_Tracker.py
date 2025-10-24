@@ -108,6 +108,7 @@ df_strava = load_data('strava_activities.csv')
 
 if df_strava is not None:
     st.title(f"Personal Activity Dashboard")
+    st.subheader('External Usage')
     st.link_button("Go to Profile", st.secrets['strava_user'])
 
     # --- Main Page Filters in an Expander ---

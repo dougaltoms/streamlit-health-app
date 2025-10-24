@@ -7,3 +7,4 @@ datetime
 streamlit_option_menu 
 streamlit_calendar
 snowflake-snowpark-python
+streamlit-echarts
