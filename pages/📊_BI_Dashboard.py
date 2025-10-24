@@ -226,7 +226,7 @@ else:
 
    # --- Simplified KPI metrics with deltas ---
     if not filtered_df.empty:
-        st.markdown("<hr style='border: 0.5px solid #0169ca;'>", unsafe_allow_html=True)
+        # st.markdown("<hr style='border: 0.5px solid #0169ca;'>", unsafe_allow_html=True)
 
         users_df = filtered_df.drop_duplicates(subset='USER_ID', keep='last').copy()
         users_df['SUBSCRIPTION_STATUS_NORM'] = users_df['SUBSCRIPTION_STATUS'].astype(str).str.lower()
@@ -263,109 +263,143 @@ else:
 
     # ---------- Charts ----------
      # (3) Support burden vs Churn status — BOX (insightful replacement for MRR by plan)
-    st.subheader("Support Tickets vs Churn Status")
-    if 'SUPPORT_TICKETS_LAST_YEAR' in users_df.columns:
-        users_df['STATUS_ROLLUP'] = np.where(
-            users_df['SUBSCRIPTION_STATUS_NORM'].isin(['churned', 'cancelled', 'canceled', 'inactive']),
-            'Churned/Inactive',
-            'Active'
-        )
+    st.subheader("Churn by Age Group")
+    users_sankey = users_df[['USER_ID','AGE','SUBSCRIPTION_STATUS']].dropna().copy()
+    users_sankey['STATUS_NORM'] = users_sankey['SUBSCRIPTION_STATUS'].astype(str).str.lower()
+    users_sankey['STATUS_ROLLUP'] = np.where(
+        users_sankey['STATUS_NORM'].isin(['churned','cancelled','canceled','inactive']),
+        'Churned/Inactive',
+        'Active/Trialing'
+    )
 
-        tmp = users_df.dropna(subset=['SUPPORT_TICKETS_LAST_YEAR', 'STATUS_ROLLUP']).copy()
-        tmp['SUPPORT_TICKETS_LAST_YEAR'] = pd.to_numeric(tmp['SUPPORT_TICKETS_LAST_YEAR'], errors='coerce')
-        tmp = tmp.dropna(subset=['SUPPORT_TICKETS_LAST_YEAR'])
+    # Age groups
+    def age_bucket(a: float) -> str:
+        a = int(a)
+        if a <= 25: return "18–25"
+        if a <= 35: return "26–35"
+        if a <= 45: return "36–45"
+        if a <= 55: return "46–55"
+        if a <= 65: return "56–65"
+        return "66+"
+    users_sankey['AGE_GROUP'] = users_sankey['AGE'].apply(age_bucket)
 
-        # Bucketize ticket volume (adjust bins if you like)
-        def bucketize(n: float) -> str:
-            n = int(n)
-            if n <= 1:  return "0–1"
-            if n <= 3:  return "2–3"
-            if n <= 6:  return "4–6"
-            if n <= 10: return "7–10"
-            if n <= 20: return "11–20"
-            return "21+"
+    flows = (
+        users_sankey.groupby(['AGE_GROUP','STATUS_ROLLUP'])['USER_ID']
+                    .nunique()
+                    .reset_index(name='COUNT')
+    )
 
-        tmp['TICKET_BUCKET'] = tmp['SUPPORT_TICKETS_LAST_YEAR'].apply(bucketize)
+    left_nodes  = ["18–25","26–35","36–45","46–55","56–65","66+"]
+    left_nodes  = [g for g in left_nodes if g in flows['AGE_GROUP'].unique().tolist()]
+    right_nodes = ["Active/Trialing","Churned/Inactive"]
 
-        # Aggregate to flows (unique users)
-        flows = (
-            tmp.groupby(['TICKET_BUCKET', 'STATUS_ROLLUP'])['USER_ID']
-               .nunique()
-               .reset_index(name='COUNT')
-        )
+    # Blue palette (dark → light)
+    blue_palette = ["#08306B", "#08519C", "#2171B5", "#4292C6", "#6BAED6", "#C6DBEF"]
 
-        # Order nodes left (buckets) to right (statuses)
-        bucket_order = ["0–1", "2–3", "4–6", "7–10", "11–20", "21+"]
-        status_order = ["Active", "Churned/Inactive"]
+    # Build nodes with blue colors
+    nodes = []
+    for i, name in enumerate(left_nodes):
+        nodes.append({"name": name, "itemStyle": {"color": blue_palette[i % len(blue_palette)]}})
+    # Right side: distinct blues for consistency
+    right_colors = ["#0B3C5D", "#60A3D9"]  # Active/Trialing, Churned/Inactive
+    for i, name in enumerate(right_nodes):
+        nodes.append({"name": name, "itemStyle": {"color": right_colors[i]}})
 
-        # Keep only buckets that exist in the data
-        bucket_order = [b for b in bucket_order if b in flows['TICKET_BUCKET'].unique().tolist()]
+    links = [
+        {"source": r["AGE_GROUP"], "target": r["STATUS_ROLLUP"], "value": int(r["COUNT"])}
+        for _, r in flows.iterrows()
+        if r["AGE_GROUP"] in left_nodes
+    ]
 
-        nodes = [{'name': n} for n in bucket_order + status_order]
-        links = [
-            {'source': r['TICKET_BUCKET'], 'target': r['STATUS_ROLLUP'], 'value': int(r['COUNT'])}
-            for _, r in flows.iterrows()
-        ]
+    option = {
+    "backgroundColor": "transparent",
+    "textStyle": {"color": "#FFFFFF"},  # global default text color
+    "tooltip": {
+        "trigger": "item",
+        "triggerOn": "mousemove",
+        "backgroundColor": "rgba(0,0,0,0.85)",
+        "textStyle": {"color": "#FFFFFF"},
+        "borderColor": "#2171B5"
+    },
+    "series": [{
+        "type": "sankey",
+        "data": nodes,
+        "links": links,
+        "nodeAlign": "left",
+        "label": {"color": "#FFFFFF", "fontSize": 12},          # node labels white
+        "emphasis": {"focus": "adjacency", "label": {"color": "#FFFFFF"}},
+        "lineStyle": {"color": "source", "opacity": 0.55, "curveness": 0.5}
+        }],
+    }
 
-        option = {
-            "tooltip": {"trigger": "item", "triggerOn": "mousemove"},
-            "series": [{
-                "type": "sankey",
-                "data": nodes,
-                "links": links,
-                "nodeAlign": "left",
-                "emphasis": {"focus": "adjacency"},
-                "lineStyle": {"color": "source", "curveness": 0.5},
-                "label": {"color": "#333", "fontSize": 12},
-            }],
-        }
 
-        st_echarts(option, height="460px", key="sankey_support_churn")
-    else:
-        st.info("`SUPPORT_TICKETS_LAST_YEAR` not available.")
+    st_echarts(option, height="460px", key="sankey_age_churn_blue")
+
+
     colA, colB = st.columns([2, 1])
 
     # (1) Signups Over Time — BAR
     with colA:
         st.subheader("Signups Over Time")
-        if 'SIGNUP_DATE' in users_df.columns:
-            signups = (
-                users_df
-                .dropna(subset=['SIGNUP_DATE'])
-                .assign(SIGNUP_MONTH=lambda x: x['SIGNUP_DATE'].dt.to_period('M').dt.to_timestamp())
-                .groupby('SIGNUP_MONTH')['USER_ID']
-                .nunique()
-                .reset_index(name='CUSTOMERS')
-                .sort_values('SIGNUP_MONTH')
+        if {'SIGNUP_DATE','GENDER'}.issubset(users_df.columns):
+            signups_gender = (
+                users_df.dropna(subset=['SIGNUP_DATE'])
+                        .assign(SIGNUP_MONTH=lambda x: x['SIGNUP_DATE'].dt.to_period('M').dt.to_timestamp())
+                        .groupby(['SIGNUP_MONTH','GENDER'])['USER_ID']
+                        .nunique()
+                        .reset_index(name='CUSTOMERS')
+                        .sort_values('SIGNUP_MONTH')
             )
-            if not signups.empty:
-                fig_signup = px.bar(signups, x='SIGNUP_MONTH', y='CUSTOMERS')
-                fig_signup.update_layout(xaxis_title='Month', yaxis_title='New Customers')
-                st.plotly_chart(fig_signup, use_container_width=True)
+            if not signups_gender.empty:
+                fig = px.bar(signups_gender, x='SIGNUP_MONTH', y='CUSTOMERS',
+                            color='GENDER', barmode='group',
+                            labels={'SIGNUP_MONTH':'Month','CUSTOMERS':'New Customers'})
+                st.plotly_chart(fig, use_container_width=True)
             else:
-                st.info("No signup dates available in the current filter.")
+                st.info("No signup data available.")
         else:
-            st.info("SIGNUP_DATE column not available.")
+            st.info("SIGNUP_DATE or GENDER column not available.")
 
     # (2) Churn Reasons — PIE
     with colB:
-        st.subheader("Churn Reasons")
-        if 'CHURN_REASON' in users_df.columns:
-            churn_mask = users_df['SUBSCRIPTION_STATUS_NORM'].isin(['churned', 'cancelled', 'canceled', 'inactive'])
-            churn_rate = (churn_mask.sum() / total_customers) if total_customers else 0.0
-            cr = (
+    # --- Churn Reasons (Top 5) — blue palette, legend only ---
+        st.subheader("Reasons for Customer Churn")
+        needed = {'CHURN_REASON', 'SUBSCRIPTION_STATUS'}
+        if needed.issubset(users_df.columns):
+            status_norm = users_df['SUBSCRIPTION_STATUS'].astype(str).str.lower()
+            churn_mask = status_norm.isin(['churned', 'cancelled', 'canceled', 'inactive'])
+
+            reasons = (
                 users_df.loc[churn_mask, 'CHURN_REASON']
-                .astype(str)
-                .replace({'': 'Unknown', 'None': 'Unknown'})
+                .astype(str).str.strip()
+                .replace({'': 'Unknown', 'none': 'Unknown', 'None': 'Unknown'})
+            )
+
+            top5 = (
+                reasons[reasons != 'Unknown']
                 .value_counts()
+                .head(5)
                 .reset_index()
             )
-            cr.columns = ['CHURN_REASON','COUNT']
-            cr = cr[cr['CHURN_REASON'].notna() & (cr['CHURN_REASON'] != 'Unknown')]
-            if not cr.empty:
-                fig_cr = px.pie(cr, names='CHURN_REASON', values='COUNT')
+            top5.columns = ['CHURN_REASON', 'COUNT']
+
+            if not top5.empty:
+                # shades of blue (dark → light)
+                blue_palette = ["#0B3C5D", "#1D65A6", "#2E86DE", "#60A3D9", "#A7C7E7"]
+
+                fig_cr = px.pie(
+                    top5,
+                    names="CHURN_REASON",
+                    values="COUNT",
+                    color="CHURN_REASON",
+                    category_orders={"CHURN_REASON": top5["CHURN_REASON"].tolist()},
+                    color_discrete_sequence=blue_palette[: len(top5)]
+                )
+                # legend only (no labels on slices)
+                fig_cr.update_traces(textinfo="none", hovertemplate="%{label}: %{value} (%{percent})")
+                fig_cr.update_layout(showlegend=True, legend_title_text="Churn Reason")
                 st.plotly_chart(fig_cr, use_container_width=True)
             else:
-                st.info("No churned/inactive customers in the current filter.")
+                st.info("No churn reasons available in the current selection.")
         else:
-            st.info("CHURN_REASON column not available.")
+            st.info("Required columns for churn reasons are not available.")
