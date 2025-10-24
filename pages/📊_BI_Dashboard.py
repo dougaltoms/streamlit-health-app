@@ -351,6 +351,8 @@ else:
     with colB:
         st.subheader("Churn Reasons")
         if 'CHURN_REASON' in users_df.columns:
+            churn_mask = users_df['SUBSCRIPTION_STATUS_NORM'].isin(['churned', 'cancelled', 'canceled', 'inactive'])
+            churn_rate = (churn_mask.sum() / total_customers) if total_customers else 0.0
             cr = (
                 users_df.loc[churn_mask, 'CHURN_REASON']
                 .astype(str)
