@@ -5,6 +5,12 @@ import numpy as np
 import plotly.express as px
 from streamlit_echarts import st_echarts
 
+st.set_page_config(
+    page_title="Customer Insights Dashboard",
+    page_icon="📊",
+    layout="wide"
+)
+
 # ---------- Connection ----------
 @st.cache_resource(ttl=1)
 def get_session() -> Session:
@@ -25,7 +31,7 @@ def get_session() -> Session:
         st.stop()
 
 # ---------- App Header ----------
-st.title("Customer Insights Dashboard")
+st.title(f"Customer Insights Dashboard")
 st.subheader('Internal Usage')
 
 # ---------- Data Load ----------
@@ -96,11 +102,11 @@ filtered_df = df[mask].copy()
 
 # ---------- Chat to Data (unchanged structure except schema text) ----------
 with st.expander('Chat to your data'):
-    st.header("Ask me anything")
+    # st.header("Ask me anything")
 
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "What do you want to know about your customers and subscriptions?"}
+            {"role": "assistant", "content": "How can I help?"}
         ]
 
     @st.cache_data()
@@ -177,7 +183,7 @@ Answer:
             st.error(f"Error generating natural language answer with Cortex: {e}")
             return "Sorry, I had trouble interpreting the results."
 
-    if q := st.chat_input("e.g. What is churn rate by country?"):
+    if q := st.chat_input("e.g. What's the most common churn reason for 'Inactive' customers aged under 30?"):
         st.session_state.messages.append({"role": "user", "content": q})
         with st.spinner("Generating SQL..."):
             sql_query = generate_sql_query(q)
